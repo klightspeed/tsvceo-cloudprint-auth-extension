@@ -1,0 +1,30 @@
+{
+    "manifest_version": 2,
+    "name": "TSVCEO Cloud Print Authentication",
+    "short_name": "tsvceo-cloudprint-auth",
+    "version": "0.0.0.5",
+    "description": "Authenticates with domain's Cloud Print proxy to release your print jobs",
+    "offline_enabled": false,
+    "icons": {
+        "128": "icon128.png"
+    },
+    "background": {
+        "scripts": [
+            "background.js"
+        ]
+    },
+    "permissions": [
+        "identity",
+        "notifications",
+        "webRequest",
+        "alarms",
+        "tabs",
+        "*://*.google.com/cloudprint/*"
+    ],
+    "oauth2": {
+        "client_id": "784163311677-nqt1fno00e27ehdii72ejfn7a8m61pf0.apps.googleusercontent.com",
+        "scopes": [
+            "https://www.googleapis.com/auth/cloudprint"
+        ]
+    }
+}
