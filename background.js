@@ -2,7 +2,7 @@ var authInProgress = false;
 var authTabId = null;
 
 function openAuthServerTab(authserver, username) {
-
+    chrome.tabs.create({ "url": authserver + "/Login?username=" + encodeURIComponent(username), "active": true }, function(tab) {});
 }
 
 function authServerLoginRequired(authserver, username, jobswaiting) {
@@ -29,7 +29,7 @@ function authServerLoginRequired(authserver, username, jobswaiting) {
 
 function checkAuthServerLogin(authserver, username) {
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", authserver + "/UserStatus?username=" + username);
+    xhr.open("GET", authserver + "/UserStatus?username=" + encodeURIComponent(username));
 
     xhr.onreadystatechange = function() {
         if (xhr.readyState == 4 && xhr.status == 200) {
@@ -47,7 +47,7 @@ function checkAuthServerLogin(authserver, username) {
 
 function getServerForPrinter(printer, username) {
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "https://tsvceo-cloudprint-authreg.appspot.com/query?printerid=" + printer);
+    xhr.open("GET", "https://tsvceo-cloudprint-authreg.appspot.com/query?printerid=" + encodeURIComponent(printer));
 
     xhr.onreadystatechange = function() {
         if (xhr.readyState == 4 && xhr.status == 200) {
