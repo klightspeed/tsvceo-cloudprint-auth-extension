@@ -145,27 +145,36 @@ function getPrintJobsAuthInteractive() {
     
     chrome.tabs.create({ "url": "auth.html", "active": false }, function(tab) {
         authTabId = tab.id;
+        var timeout;
 
-        chrome.tabs.onUpdated.addListener(function authTabUpdated(tabid, change, tab) {
+        var authTabUpdated = function (tabid, change, tab) {
             if (tabid == authTabId && change.status == "complete") {
-                chrome.tabs.sendMessage(tabid, "", function(response) {
-                    authTabId = null;
-
-                    //chrome.tabs.remove(tabid);
-
-                    if (!response.token) {
-                        console.log(response.lasterror);
-                    } else {
-                        console.log("Got auth interactively");
-                        doGetPrintJobs(response.token);
-                    }
-
-                    authInProgress = false;
-
-                    chrome.tabs.onUpdated.removeListener(authTabUpdated);
-                });
+                timeout = setTimeout(function() {
+                    console.log("OAuth tab took longer than 5 seconds; activating");
+                    chrome.tabs.update(tabid, { "active": true });
+                }, 5000);
             }
-        });
+        };
+
+        var authTabClosed = function (tabid, info) {
+            if (tabid == authTabId) {
+                chrome.identity.getAuthToken({"interactive": false}, function(token) {
+                    if (!token) {
+                        console.log(chrome.runtime.lastError);
+                    } else {
+                        doGetPrintJobs(token);
+                    }
+                });
+
+                chrome.tabs.onUpdated.removeListener(authTabUpdated);
+                chrome.tabs.onRemoved.removeListener(authTabClosed);
+                clearTimeout(timeout);
+            }
+        };
+
+
+        chrome.tabs.onUpdated.addListener(authTabUpdated);
+        chrome.tabs.onRemoved.addListener(authTabClosed);
     });
 }
 
