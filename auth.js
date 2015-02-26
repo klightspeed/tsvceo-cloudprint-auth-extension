@@ -4,6 +4,7 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
             "token": token,
             "lasterror": chrome.runtime.lastError
         });
+	window.close();
     });
 });
 

@@ -1,13 +1,35 @@
 var authInProgress = false;
 var authTabId = null;
 
+function authServerNotify(authserver) {
+    chrome.notifications.create(
+        "tsvceo-cloudprint-auth_authserver_visit",
+        {
+            type: "basic",
+            title: "CloudPrint Server",
+            message: "Please click here to go to cloud print server.",
+            priority: 1,
+            iconUrl: "icon128.png",
+            isClickable: true
+        },
+        function(id) {
+            chrome.notifications.onClicked.addListener(function noteClicked(nid) {
+                if (nid == id) {
+                    chrome.tabs.create({ "url": authserver, "active": true }, function(tab) {});
+                    chrome.notifications.onClicked.removeListener(noteClicked);
+                }
+            });
+        }
+    );
+}
+
 function openAuthServerTab(authserver, username) {
     chrome.tabs.create({ "url": authserver + "/Login?username=" + encodeURIComponent(username), "active": true }, function(tab) {});
 }
 
 function authServerLoginRequired(authserver, username, jobswaiting) {
     chrome.notifications.create(
-        "tsvceo-cloudprint-auth_authserver",
+        "tsvceo-cloudprint-auth_authserver_login",
         {
             type: "basic",
             title: "CloudPrint Server",
@@ -28,15 +50,36 @@ function authServerLoginRequired(authserver, username, jobswaiting) {
 }
 
 function checkAuthServerLogin(authserver, username) {
+    console.log("Requesting user login status for " + username + " from " + authserver);
     var xhr = new XMLHttpRequest();
     xhr.open("GET", authserver + "/UserStatus?username=" + encodeURIComponent(username));
 
     xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            var response = xhr.response;
+        if (xhr.readyState == 4) {
+            if (xhr.status == 200 && xhr.response) {
+                var response = xhr.response;
 
-            if (!response.isauthenticated) {
-                authServerLoginRequired(authserver, username, response.jobswaiting);
+                if (response.isauthenticated) {
+                    console.log("User is already authenticated with server");
+
+                    chrome.notifications.create(
+                        "tsvceo-cloudprint-auth_printsubmit",
+                        {
+                            type: "basic",
+                            title: "Print Job Submitted",
+                            message: "Your print job has been sent to the print server.",
+                            priority: 1,
+                            iconUrl: "icon128.png"
+                        },
+                        function(id) {}
+                    );
+                } else {
+                    console.log("User needs to authenticate with server");
+                    authServerLoginRequired(authserver, username, response.jobswaiting);
+                }
+            } else {
+                console.log("Server does not support /UserStatus endpoint");
+                authServerNotify(authserver);
             }
         }
     }
@@ -46,6 +89,7 @@ function checkAuthServerLogin(authserver, username) {
 }
 
 function getServerForPrinter(printer, username) {
+    console.log("Getting server for printer " + printer + "; username=" + username);
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "https://tsvceo-cloudprint-authreg.appspot.com/query?printerid=" + encodeURIComponent(printer));
 
@@ -107,11 +151,12 @@ function getPrintJobsAuthInteractive() {
                 chrome.tabs.sendMessage(tabid, "", function(response) {
                     authTabId = null;
 
-                    chrome.tabs.remove(tabid);
+                    //chrome.tabs.remove(tabid);
 
                     if (!response.token) {
                         console.log(response.lasterror);
                     } else {
+                        console.log("Got auth interactively");
                         doGetPrintJobs(response.token);
                     }
 
@@ -140,19 +185,9 @@ function getPrintJobs(interactive) {
 
 chrome.webRequest.onCompleted.addListener(
     function(details) {
-        getPrintJobs(true);
-
-        chrome.notifications.create(
-            "tsvceo-cloudprint-auth_printsubmit",
-            {
-                type: "basic",
-                title: "Print Job Submitted",
-                message: "You have submitted a cloud print job",
-                priority: 1,
-                iconUrl: "icon128.png"
-            },
-            function(id) {}
-        );
+        if (details.method == "POST") {
+            getPrintJobs(true);
+        }
     },
     {
         urls: [
